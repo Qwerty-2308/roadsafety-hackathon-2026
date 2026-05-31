@@ -1034,3 +1034,243 @@ showSection = function(sectionId) {
 setTimeout(() => {
   renderDriverScoreBadge();
 }, 3000);
+
+// ===== PLUS CODES (Open Location Code) =====
+function encodePlusCode(lat, lng) {
+  const ALPHABET = '23456789CFGHJMPQRVWX';
+  const PAIR = [
+    [20, 1],
+    [18, 1],
+    [20, 1],
+    [17, 1],
+    [20, 1],
+    [18, 1],
+    [19, 1],
+    [19, 1],
+    [19, 1],
+    [19, 1]
+  ];
+  let code = '';
+  let latVal = lat + 90;
+  let lngVal = lng + 180;
+  for (let i = 0; i < 10; i++) {
+    const [latMul, lngMul] = PAIR[i];
+    const latDigit = Math.floor(latVal * latMul / 20);
+    const lngDigit = Math.floor(lngVal * lngMul / 20);
+    code += ALPHABET[latDigit] + ALPHABET[lngDigit];
+    latVal = (latVal * latMul / 20 - latDigit) * 20 / latMul;
+    lngVal = (lngVal * lngMul / 20 - lngDigit) * 20 / lngMul;
+    if (i === 2) code += '+';
+  }
+  return code;
+}
+
+function showPlusCode() {
+  if (!userLocation) return;
+  const code = encodePlusCode(userLocation.lat, userLocation.lng);
+  const existing = document.getElementById('pluscode-display');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'pluscode-display';
+  el.style.cssText = 'position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:var(--dark);color:white;padding:10px 20px;border-radius:var(--radius-sm);font-size:0.85rem;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap';
+  el.innerHTML = `📍 ${code} <span style="font-size:0.7rem;opacity:0.7">Plus Code — tap to copy</span>`;
+  el.onclick = () => { navigator.clipboard.writeText(code).then(() => showToast('✅ Plus Code copied! Share with dispatcher.')); };
+  document.querySelector('.hero')?.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 15000);
+}
+
+const _origDetect = detectLocation;
+detectLocation = function() {
+  _origDetect();
+  setTimeout(showPlusCode, 2000);
+};
+
+// ===== EMERGENCY MEDICAL ID =====
+function showMedicalID() {
+  const profile = getProfile();
+  const existing = document.getElementById('medical-id-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'medical-id-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid #e63946;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 8px 40px rgba(230,57,70,0.3)">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:2rem;margin-bottom:4px">🆔</div>
+        <h3 style="color:white;font-size:1.1rem;font-weight:800">MEDICAL ID</h3>
+        <p style="color:#a6adc8;font-size:0.75rem">Show this to first responders</p>
+      </div>
+      ${profile.blood ? `<div style="background:#16213e;border-radius:8px;padding:10px 14px;margin-bottom:8px"><span style="color:#a6adc8;font-size:0.7rem">BLOOD TYPE</span><div style="color:white;font-size:1.3rem;font-weight:800">${profile.blood}</div></div>` : ''}
+      ${profile.conditions ? `<div style="background:#16213e;border-radius:8px;padding:10px 14px;margin-bottom:8px"><span style="color:#a6adc8;font-size:0.7rem">CONDITIONS / ALLERGIES</span><div style="color:#f97316;font-size:0.85rem;font-weight:600">${profile.conditions}</div></div>` : ''}
+      ${profile.vehicle ? `<div style="background:#16213e;border-radius:8px;padding:10px 14px;margin-bottom:8px"><span style="color:#a6adc8;font-size:0.7rem">VEHICLE</span><div style="color:white;font-size:0.85rem">${profile.vehicle}</div></div>` : ''}
+      ${(profile.contacts || []).filter(c => c.name).map(c => `
+        <div style="background:#16213e;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+          <div><span style="color:#a6adc8;font-size:0.65rem">EMERGENCY CONTACT</span><div style="color:white;font-size:0.85rem;font-weight:600">${c.name}</div></div>
+          <a href="tel:${c.phone}" style="background:#e63946;color:white;padding:6px 12px;border-radius:6px;font-size:0.75rem;font-weight:700;text-decoration:none">📞 Call</a>
+        </div>
+      `).join('') || '<div style="color:#585b70;font-size:0.8rem;text-align:center;padding:12px">No medical profile saved. Go to Profile section.</div>'}
+      <button onclick="document.getElementById('medical-id-overlay').remove()" style="width:100%;margin-top:12px;padding:12px;background:#e63946;color:white;border-radius:8px;font-size:0.9rem;font-weight:700">Close</button>
+    </div>`;
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+// Add medical ID button to SOS area
+setTimeout(() => {
+  const sosContent = document.querySelector('.hero-content');
+  if (sosContent) {
+    const btn = document.createElement('button');
+    btn.id = 'medid-btn';
+    btn.innerHTML = '🆔 Medical ID';
+    btn.onclick = showMedicalID;
+    btn.style.cssText = 'background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.1);margin-top:8px';
+    document.querySelector('.emergency-numbers')?.after(btn);
+  }
+}, 2000);
+
+// ===== VISUAL FIRST-AID CANVAS OVERLAY =====
+function showFirstAid(type) {
+  const existing = document.getElementById('firstaid-overlay');
+  if (existing) existing.remove();
+  const guides = {
+    cpr: { title: '🧑‍⚕️ CPR', steps: ['Call 108/112', 'Check responsiveness', 'Tilt head, lift chin', '30 chest compressions (100-120/min)', '2 rescue breaths', 'Repeat until help arrives'], color: '#e63946' },
+    bleeding: { title: '🩸 Severe Bleeding', steps: ['Call 108/112', 'Apply firm pressure with cloth', 'Elevate wound above heart', 'Apply tourniquet if arterial', 'Do NOT remove embedded objects', 'Keep victim warm'], color: '#dc2626' },
+    fracture: { title: '🦴 Fracture', steps: ['Call 108/112', 'Immobilize the limb', 'Apply splint if possible', 'Apply ice pack (not directly)', 'Do NOT realign bones', 'Elevate if possible'], color: '#f97316' },
+    shock: { title: '⚠️ Shock', steps: ['Call 108/112', 'Lay person on back', 'Elevate legs 12 inches', 'Keep warm with blanket', 'Do NOT give food/drink', 'Reassure calmly'], color: '#6366f1' }
+  };
+  const g = guides[type] || guides.cpr;
+  const overlay = document.createElement('div');
+  overlay.id = 'firstaid-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid ${g.color};border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+      <div style="text-align:center;margin-bottom:16px">
+        <h3 style="color:white;font-size:1.1rem;font-weight:800">${g.title}</h3>
+        <p style="color:#a6adc8;font-size:0.75rem">Step-by-step first aid guide</p>
+      </div>
+      <div style="counter-reset:step">
+        ${g.steps.map((s, i) => `
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;background:#16213e;border-radius:8px;padding:10px 12px">
+            <div style="width:26px;height:26px;border-radius:50%;background:${g.color};color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0">${i + 1}</div>
+            <div style="color:white;font-size:0.85rem;line-height:1.4">${s}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button onclick="document.getElementById('firstaid-overlay').remove()" style="width:100%;padding:12px;background:${g.color};color:white;border-radius:8px;font-size:0.9rem;font-weight:700;margin-top:8px">Close</button>
+    </div>`;
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+// ===== MULTI-CHANNEL SOS =====
+function sosWhatsApp() {
+  if (!userLocation) { showToast('⚠️ Enable location first'); return; }
+  const profile = getProfile();
+  const url = `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+  const msg = `🚨 *RoadSoS EMERGENCY!*\n📍 *Location:* ${url}\n🩸 *Blood:* ${profile.blood || 'Not set'}\n👤 *Contacts:* ${(profile.contacts || []).filter(c => c.phone).map(c => `${c.name}: ${c.phone}`).join(', ') || 'None'}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function sosSMS() {
+  if (!userLocation) { showToast('⚠️ Enable location first'); return; }
+  const code = encodePlusCode(userLocation.lat, userLocation.lng);
+  const profile = getProfile();
+  const msg = `RoadSoS EMERGENCY! My location: https://maps.google.com/?q=${userLocation.lat},${userLocation.lng} Plus Code: ${code} Blood: ${profile.blood || 'N/A'}`;
+  const contact = (profile.contacts || []).find(c => c.phone);
+  if (contact) {
+    window.location.href = `sms:${contact.phone}?body=${encodeURIComponent(msg)}`;
+  } else {
+    showToast('⚠️ Save an emergency contact in Profile first', 3000);
+  }
+}
+
+// ===== PROXIMITY HAZARD ALERTS =====
+let hazardAlertInterval = null;
+let hazardAlertedIds = new Set();
+
+function startHazardProximityAlerts() {
+  if (hazardAlertInterval) clearInterval(hazardAlertInterval);
+  hazardAlertInterval = setInterval(() => {
+    if (!userLocation || !voiceActive) return;
+    const allHazards = [...emergencyData.hazard_blackspots, ...hazardReports.filter(r => !r.resolved)];
+    allHazards.forEach(h => {
+      const dist = getDistance(userLocation.lat, userLocation.lng, h.lat, h.lng);
+      if (dist < 0.3 && !hazardAlertedIds.has(h.id)) {
+        hazardAlertedIds.add(h.id);
+        const name = h.name || h.type || 'hazard';
+        speak(`⚠️ Warning! ${name} ${dist < 0.1 ? 'directly ahead' : 'nearby'}. Please drive carefully.`);
+        showToast(`⚠️ ${name} ${dist < 0.1 ? 'ahead!' : 'nearby!'}`, 4000);
+      }
+    });
+  }, 5000);
+}
+
+setTimeout(startHazardProximityAlerts, 5000);
+
+// ===== TRIP SAFETY LOG =====
+function startTrip() {
+  if (!userLocation) { showToast('⚠️ Enable location to start trip'); return; }
+  const trip = { id: Date.now(), start: { lat: userLocation.lat, lng: userLocation.lng, time: new Date().toISOString() }, end: null, hazardsPassed: 0, distance: 0 };
+  localStorage.setItem('roadsos_active_trip', JSON.stringify(trip));
+  showToast('🚗 Trip started! Drive safe.', 3000);
+}
+
+function endTrip() {
+  const tripRaw = localStorage.getItem('roadsos_active_trip');
+  if (!tripRaw) { showToast('No active trip', 2000); return; }
+  const trip = JSON.parse(tripRaw);
+  trip.end = { lat: userLocation?.lat, lng: userLocation?.lng, time: new Date().toISOString() };
+  if (userLocation && trip.start) {
+    trip.distance = getDistance(trip.start.lat, trip.start.lng, userLocation.lat, userLocation.lng);
+  }
+  const logs = JSON.parse(localStorage.getItem('roadsos_trip_logs') || '[]');
+  logs.unshift(trip);
+  localStorage.setItem('roadsos_trip_logs', JSON.stringify(logs));
+  localStorage.removeItem('roadsos_active_trip');
+  updateDriverScore('trip');
+  renderDriverScoreBadge();
+  showToast(`✅ Trip complete! ${trip.distance.toFixed(1)} km traveled.`, 4000);
+}
+
+function showTripLog() {
+  const logs = JSON.parse(localStorage.getItem('roadsos_trip_logs') || '[]');
+  const active = JSON.parse(localStorage.getItem('roadsos_active_trip') || 'null');
+  let html = active ? `<div style="background:#d1fae5;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px"><strong>🚗 Active Trip</strong> — Started ${new Date(active.start.time).toLocaleTimeString()}</div>` : '';
+  if (logs.length === 0 && !active) { showToast('No trip logs yet', 2000); return; }
+  html += logs.slice(0, 20).map(t => `
+    <div style="background:var(--white);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:0.8rem">
+      <div><span style="font-weight:600">${new Date(t.start.time).toLocaleDateString()}</span> · ${t.distance ? t.distance.toFixed(1) + ' km' : 'N/A'}</div>
+      <div style="color:var(--gray-500)">${new Date(t.start.time).toLocaleTimeString()}</div>
+    </div>
+  `).join('');
+  const overlay = document.createElement('div');
+  overlay.id = 'trip-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:5000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `<div style="background:var(--white);border-radius:16px;padding:24px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.5)"><h3 style="font-size:1.1rem;font-weight:800;margin-bottom:16px">🚗 Trip Log</h3>${html || '<p style="color:var(--gray-400)">No trips logged yet</p>'}<button onclick="document.getElementById('trip-overlay').remove()" style="width:100%;padding:12px;background:var(--gray-100);color:var(--dark);border-radius:8px;font-size:0.9rem;font-weight:600;margin-top:12px">Close</button></div>`;
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+// ===== LIVE WEATHER =====
+async function loadWeather() {
+  if (!userLocation) return;
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLocation.lat}&longitude=${userLocation.lng}&current_weather=true`);
+    const data = await res.json();
+    if (!data.current_weather) return;
+    const w = data.current_weather;
+    const codes = { 0: '☀️ Clear', 1: '🌤️ Mainly clear', 2: '⛅ Partly cloudy', 3: '☁️ Overcast', 45: '🌫️ Foggy', 48: '🌫️ Depositing rime', 51: '🌧️ Light drizzle', 53: '🌧️ Moderate drizzle', 55: '🌧️ Dense drizzle', 61: '🌧️ Slight rain', 63: '🌧️ Moderate rain', 65: '🌧️ Heavy rain', 71: '❄️ Slight snow', 73: '❄️ Moderate snow', 75: '❄️ Heavy snow', 80: '🌦️ Slight rain showers', 81: '🌦️ Moderate rain showers', 82: '🌦️ Violent rain showers', 95: '⛈️ Thunderstorm', 96: '⛈️ Thunderstorm with slight hail', 99: '⛈️ Thunderstorm with heavy hail' };
+    const weatherDiv = document.getElementById('weather-info');
+    if (!weatherDiv) return;
+    const desc = codes[w.weathercode] || '🌡️ Unknown';
+    const temp = w.temperature !== undefined ? `${Math.round(w.temperature)}°C` : '';
+    weatherDiv.innerHTML = `${desc} ${temp} · 💨 ${w.windspeed || '?'} km/h`;
+    weatherDiv.style.display = 'block';
+  } catch {}
+}
+
+// ===== INITIALIZE ALL NEW FEATURES =====
+setTimeout(() => {
+  loadWeather();
+  document.getElementById('weather-info')?.addEventListener('click', () => loadWeather().then(() => showToast('🌤️ Weather updated!', 2000)));
+}, 4000);

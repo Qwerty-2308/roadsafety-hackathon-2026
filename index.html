@@ -35,6 +35,7 @@
         <li><a href="#" data-section="contacts" onclick="showSection('contacts')" data-i18n="nav_contacts">Saved Contacts</a></li>
         <li><a href="#" data-section="profile" onclick="showSection('profile')">👤 My Profile</a></li>
         <li><a href="#" data-section="hazards" onclick="showSection('hazards')" data-i18n="nav_hazards">⚠️ Hazard Map</a></li>
+        <li><a href="#" data-section="firstaid" onclick="showSection('firstaid')">🩹 First Aid</a></li>
         <li><button id="dark-toggle" class="lang-btn" onclick="toggleDark()" title="Toggle dark mode">🌙</button></li>
         <li><button class="lang-btn" id="lang-btn" onclick="switchLang()">हिन्दी</button></li>
       </ul>
@@ -77,9 +78,23 @@
           <button onclick="startRecording()" id="record-btn" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.1)">
             📹 Record Incident
           </button>
+          <button onclick="sosWhatsApp()" style="background:rgba(37,211,102,0.25);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid rgba(37,211,102,0.2)">
+            📱 WhatsApp SOS
+          </button>
+          <button onclick="sosSMS()" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.1)">
+            💬 SMS SOS
+          </button>
           <button onclick="showSection('profile')" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.1)">
             🆔 QR Profile
           </button>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap">
+          <div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);color:white;padding:8px 16px;border-radius:var(--radius-sm);font-size:0.75rem;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.05)">
+            <span id="weather-info" style="cursor:pointer" title="Tap to refresh">🌤️ Loading weather...</span>
+          </div>
+          <button onclick="startTrip()" style="background:rgba(16,185,129,0.2);backdrop-filter:blur(8px);color:white;padding:8px 14px;border-radius:var(--radius-sm);font-size:0.75rem;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid rgba(16,185,129,0.15)">🚗 Start Trip</button>
+          <button onclick="endTrip()" style="background:rgba(239,68,68,0.2);backdrop-filter:blur(8px);color:white;padding:8px 14px;border-radius:var(--radius-sm);font-size:0.75rem;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid rgba(239,68,68,0.15)">⏹️ End Trip</button>
+          <button onclick="showTripLog()" style="background:rgba(99,102,241,0.2);backdrop-filter:blur(8px);color:white;padding:8px 14px;border-radius:var(--radius-sm);font-size:0.75rem;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid rgba(99,102,241,0.15)">📋 Trip Log</button>
         </div>
       </div>
     </div>
@@ -219,6 +234,36 @@
             <h4>Privacy First</h4>
             <p>Location data is never stored — used only for real-time emergency dispatch</p>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FIRST AID ===== -->
+  <section id="firstaid" class="section-page section" style="display:none;background:var(--gray-50)">
+    <div class="container">
+      <h2 class="section-title">🩹 Visual First Aid Guide</h2>
+      <p class="section-sub">Emergency first aid procedures — follow these steps while waiting for help</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;max-width:700px;margin:0 auto">
+        <div class="step" onclick="showFirstAid('cpr')" style="cursor:pointer;text-align:center">
+          <div class="step-icon red" style="font-size:2rem">🫀</div>
+          <h3>CPR</h3>
+          <p style="font-size:0.75rem">Cardiopulmonary resuscitation</p>
+        </div>
+        <div class="step" onclick="showFirstAid('bleeding')" style="cursor:pointer;text-align:center">
+          <div class="step-icon red" style="font-size:2rem">🩸</div>
+          <h3>Bleeding</h3>
+          <p style="font-size:0.75rem">Severe bleeding control</p>
+        </div>
+        <div class="step" onclick="showFirstAid('fracture')" style="cursor:pointer;text-align:center">
+          <div class="step-icon red" style="font-size:2rem">🦴</div>
+          <h3>Fracture</h3>
+          <p style="font-size:0.75rem">Bone injury management</p>
+        </div>
+        <div class="step" onclick="showFirstAid('shock')" style="cursor:pointer;text-align:center">
+          <div class="step-icon red" style="font-size:2rem">⚠️</div>
+          <h3>Shock</h3>
+          <p style="font-size:0.75rem">Shock first aid response</p>
         </div>
       </div>
     </div>
