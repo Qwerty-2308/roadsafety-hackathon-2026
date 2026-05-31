@@ -739,6 +739,8 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSaved();
   loadProfile();
   startAccidentDetection();
+  updateHazardStats();
+  renderHazardList();
 
   document.getElementById('sos-btn').addEventListener('click', triggerSOS);
 
@@ -746,3 +748,289 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('report-form')?.addEventListener('submit', submitReport);
 });
+
+// ===== DARK MODE =====
+function toggleDark() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('roadsos_dark', isDark ? '0' : '1');
+  document.getElementById('dark-toggle').textContent = isDark ? '🌙' : '☀️';
+}
+
+(function() {
+  if (localStorage.getItem('roadsos_dark') === '1') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('dark-toggle').textContent = '☀️';
+  }
+})();
+
+// ===== VOICE GUIDE =====
+let voiceActive = false;
+
+function toggleVoiceGuide() {
+  voiceActive = !voiceActive;
+  const btn = document.getElementById('voice-btn');
+  btn.style.background = voiceActive ? 'rgba(46,204,113,0.3)' : 'rgba(255,255,255,0.15)';
+  btn.innerHTML = voiceActive ? '🔊 Voice ON' : '🔊 Voice Guide';
+  if (voiceActive) speak('Voice guide activated. Tap SOS in an emergency.');
+}
+
+function speak(text, lang = 'en-IN') {
+  if (!voiceActive) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = 0.9;
+  u.volume = 1;
+  window.speechSynthesis.speak(u);
+}
+
+// Override triggerSOS to add voice
+const _origTrigger = triggerSOS;
+triggerSOS = function() {
+  if (voiceActive) speak('Emergency SOS activated! Help is being notified. Stay calm and wait for assistance.', currentLang === 'hi' ? 'hi-IN' : 'en-IN');
+  _origTrigger();
+};
+
+// ===== INCIDENT RECORDING =====
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStream = null;
+
+async function startRecording() {
+  const btn = document.getElementById('record-btn');
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    stopRecording();
+    return;
+  }
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    mediaRecorder = new MediaRecorder(recordingStream);
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `incident-${Date.now()}.mp4`;
+      a.click();
+      URL.revokeObjectURL(url);
+      recordingStream.getTracks().forEach(t => t.stop());
+      recordingStream = null;
+      showToast('✅ Incident video saved. Share it with authorities.', 4000);
+      btn.innerHTML = '📹 Record Incident';
+      btn.style.background = 'rgba(255,255,255,0.15)';
+    };
+    mediaRecorder.start();
+    btn.innerHTML = '⏹️ Stop Recording';
+    btn.style.background = 'rgba(239,68,68,0.4)';
+    showToast('🔴 Recording incident... Tap again to stop.', 3000);
+  } catch {
+    showToast('⚠️ Camera access denied. Enable camera to record.', 3000);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+}
+
+// ===== HAZARD REPORTING =====
+let hazardMap = null;
+let hazardMarkers = [];
+let hazardReports = JSON.parse(localStorage.getItem('roadsos_hazards') || '[]');
+
+function getHazardIcon(type) {
+  return { pothole: '🕳️', debris: '🗑️', signal: '🚦', road: '🛑', accident: '🚨', blackspot: '🔴', other: '⚠️' }[type] || '⚠️';
+}
+
+function getHazardColor(type) {
+  return { pothole: '#8B4513', debris: '#6B7280', signal: '#F59E0B', road: '#DC2626', accident: '#E63946', blackspot: '#991B1B', other: '#6366F1' }[type] || '#6B7280';
+}
+
+function initHazardMap() {
+  if (!userLocation) return;
+  const container = document.getElementById('hazard-map-container');
+  if (!container) return;
+  document.getElementById('hazard-map')?.remove();
+  container.innerHTML = '<div id="hazard-map" style="height:100%"></div>';
+
+  hazardMap = L.map('hazard-map', { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 12);
+  L.control.zoom({ position: 'bottomright' }).addTo(hazardMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(hazardMap);
+
+  const userIcon = L.divIcon({ className: '', html: '<div class="user-marker" style="width:14px;height:14px;border-width:3px"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+  L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(hazardMap).bindPopup('<div class="popup-content"><h4>📍 You</h4></div>');
+
+  addHazardMarkers();
+  hazardMap.invalidateSize();
+}
+
+function addHazardMarkers() {
+  if (!hazardMap) return;
+  hazardMarkers.forEach(m => hazardMap.removeLayer(m));
+  hazardMarkers = [];
+
+  emergencyData.hazard_blackspots.forEach(bs => {
+    const color = '#DC2626';
+    const icon = L.divIcon({ className: '', html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">🔴</div>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+    const m = L.marker([bs.lat, bs.lng], { icon });
+    m.bindPopup(`<div class="popup-content"><h4>🔴 ${bs.name}</h4><p>⚠️ ${bs.severity.toUpperCase()} risk</p><p>${bs.desc}</p></div>`);
+    hazardMarkers.push(m);
+    m.addTo(hazardMap);
+  });
+
+  hazardReports.forEach(r => {
+    const icon = L.divIcon({ className: '', html: `<div style="width:24px;height:24px;border-radius:50%;background:${getHazardColor(r.type)};display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${getHazardIcon(r.type)}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
+    const m = L.marker([r.lat, r.lng], { icon });
+    const status = r.resolved ? '✅ Resolved' : '⚠️ Active';
+    m.bindPopup(`<div class="popup-content"><h4>${getHazardIcon(r.type)} ${r.type}</h4><p>${r.desc || 'No description'}</p><p>${status} · ${new Date(r.time).toLocaleDateString()}</p></div>`);
+    hazardMarkers.push(m);
+    m.addTo(hazardMap);
+  });
+}
+
+function reportHazard() {
+  if (!userLocation) { showToast('⚠️ Enable location to report hazards'); return; }
+  const type = document.getElementById('hazard-type').value;
+  const desc = document.getElementById('hazard-desc').value.trim();
+  const report = { id: 'h' + Date.now(), type, desc: desc || `${type} hazard`, lat: userLocation.lat, lng: userLocation.lng, time: new Date().toISOString(), resolved: false, votes: 0 };
+  hazardReports.push(report);
+  localStorage.setItem('roadsos_hazards', JSON.stringify(hazardReports));
+  document.getElementById('hazard-desc').value = '';
+  showToast(`✅ ${getHazardIcon(type)} ${type} hazard reported!`, 3000);
+  updateHazardStats();
+  renderHazardList();
+  addHazardMarkers();
+}
+
+function updateHazardStats() {
+  document.getElementById('stat-potholes').textContent = hazardReports.filter(r => r.type === 'pothole').length;
+  document.getElementById('stat-blackspots').textContent = emergencyData.hazard_blackspots.length;
+  document.getElementById('stat-resolved').textContent = hazardReports.filter(r => r.resolved).length;
+  document.getElementById('stat-total').textContent = hazardReports.length + emergencyData.hazard_blackspots.length;
+}
+
+function renderHazardList() {
+  const container = document.getElementById('hazard-list');
+  const all = [...emergencyData.hazard_blackspots.map(bs => ({ ...bs, isBlackspot: true })), ...hazardReports.map(r => ({ ...r, isBlackspot: false }))];
+  container.innerHTML = all.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).map(h => {
+    if (h.isBlackspot) {
+      return `<div style="background:var(--white);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)">
+        <span style="font-size:1.2rem">🔴</span>
+        <div style="flex:1"><div style="font-weight:700;font-size:0.85rem;color:var(--dark)">${h.name}</div><div style="font-size:0.75rem;color:var(--gray-500)">${h.desc} · ${h.severity}</div></div>
+      </div>`;
+    }
+    return `<div style="background:var(--white);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)">
+      <span style="font-size:1.2rem">${getHazardIcon(h.type)}</span>
+      <div style="flex:1"><div style="font-weight:700;font-size:0.85rem;color:var(--dark)">${h.type} — ${h.desc}</div><div style="font-size:0.75rem;color:var(--gray-500)">${h.resolved ? '✅ Resolved' : '⚠️ Active'} · ${new Date(h.time).toLocaleDateString()}</div></div>
+      ${h.resolved ? '' : `<button onclick="resolveHazard('${h.id}')" style="padding:4px 10px;border-radius:var(--radius-sm);font-size:0.7rem;font-weight:600;background:#dcfce7;color:#16a34a">Resolve</button>`}
+    </div>`;
+  }).join('');
+}
+
+function resolveHazard(id) {
+  hazardReports = hazardReports.map(r => r.id === id ? { ...r, resolved: true } : r);
+  localStorage.setItem('roadsos_hazards', JSON.stringify(hazardReports));
+  updateHazardStats();
+  renderHazardList();
+  addHazardMarkers();
+  showToast('✅ Hazard marked as resolved', 2000);
+}
+
+// ===== QR PROFILE =====
+function shareQR() {
+  const profile = getProfile();
+  if (!profile.blood && !profile.contacts?.length) {
+    showToast('⚠️ Save your profile first to generate a QR code', 3000);
+    return;
+  }
+  const data = [`RoadSoS Emergency Profile`];
+  if (profile.blood) data.push(`Blood: ${profile.blood}`);
+  if (profile.vehicle) data.push(`Vehicle: ${profile.vehicle}`);
+  if (profile.conditions) data.push(`Conditions: ${profile.conditions}`);
+  if (profile.contacts?.length) {
+    profile.contacts.forEach(c => { if (c.name && c.phone) data.push(`Contact: ${c.name} ${c.phone}`); });
+  }
+  const encoded = encodeURIComponent(data.join('\n'));
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`;
+  document.getElementById('qr-code').src = qrUrl;
+  document.getElementById('qr-code').style.width = '200px';
+  document.getElementById('qr-code').style.height = '200px';
+}
+
+// Override saveProfile to also update QR
+const _origSave = saveProfile;
+saveProfile = function() {
+  _origSave();
+  setTimeout(shareQR, 500);
+};
+
+// ===== SAFE DRIVER SCORE =====
+function getDriverScore() {
+  try { return JSON.parse(localStorage.getItem('roadsos_score') || '{"points":100,"level":"Bronze","trips":0,"sosCount":0}'); }
+  catch { return { points: 100, level: 'Bronze', trips: 0, sosCount: 0 }; }
+}
+
+function updateDriverScore(type) {
+  const score = getDriverScore();
+  if (type === 'trip') { score.points += 5; score.trips++; }
+  if (type === 'sos') { score.points = Math.max(0, score.points - 10); score.sosCount++; }
+  if (score.points >= 300) score.level = 'Platinum';
+  else if (score.points >= 200) score.level = 'Gold';
+  else if (score.points >= 100) score.level = 'Silver';
+  else score.level = 'Bronze';
+  localStorage.setItem('roadsos_score', JSON.stringify(score));
+}
+
+function renderDriverScoreBadge() {
+  const score = getDriverScore();
+  const existing = document.getElementById('driver-score-badge');
+  if (existing) existing.remove();
+  const badge = document.createElement('div');
+  badge.id = 'driver-score-badge';
+  badge.style.cssText = 'position:fixed;top:72px;right:16px;z-index:900;background:var(--white);border-radius:var(--radius-sm);padding:6px 14px;box-shadow:var(--shadow);font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--gray-200)';
+  badge.innerHTML = `🏆 ${score.level} · ${score.points} pts · ${score.trips} trips`;
+  badge.onclick = () => showToast(`🏆 Safe Driver Score\n${score.points} pts · ${score.level}\n${score.trips} safe trips · ${score.sosCount} SOS`, 4000);
+  document.body.appendChild(badge);
+}
+
+// Track SOS for driver score
+const _origConfirm = confirmSOS;
+confirmSOS = function() {
+  updateDriverScore('sos');
+  _origConfirm();
+};
+
+// Daily safe trip bonus
+setInterval(() => {
+  const last = localStorage.getItem('roadsos_last_trip_date');
+  const today = new Date().toDateString();
+  if (last !== today) {
+    localStorage.setItem('roadsos_last_trip_date', today);
+    updateDriverScore('trip');
+    renderDriverScoreBadge();
+  }
+}, 30000);
+
+// Override showSection to init hazard map
+const _origShow = showSection;
+showSection = function(sectionId) {
+  _origShow(sectionId);
+  if (sectionId === 'hazards') {
+    setTimeout(() => {
+      if (!hazardMap) initHazardMap();
+      else hazardMap.invalidateSize();
+      renderDriverScoreBadge();
+      updateHazardStats();
+    }, 200);
+  }
+};
+
+// Delayed init for hazard map + score
+setTimeout(() => {
+  renderDriverScoreBadge();
+}, 3000);

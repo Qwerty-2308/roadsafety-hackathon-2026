@@ -33,6 +33,15 @@ const emergencyData = {
     { id: 'ec3', name: 'Police', phone: '100', type: 'contact', subtype: 'Police Control Room', rating: 5.0 },
     { id: 'ec4', name: 'Fire Brigade', phone: '101', type: 'contact', subtype: 'Fire Emergency', rating: 5.0 },
     { id: 'ec5', name: 'Women Helpline', phone: '1091', type: 'contact', subtype: 'Women Emergency', rating: 5.0 }
+  ],
+  hazard_blackspots: [
+    { id: 'bs1', lat: 13.0200, lng: 80.1950, name: 'Maduravoyal Junction', type: 'blackspot', severity: 'high', desc: 'Frequent accidents at this intersection' },
+    { id: 'bs2', lat: 12.9900, lng: 80.1900, name: 'Porur Junction', type: 'blackspot', severity: 'high', desc: 'High-speed accidents common' },
+    { id: 'bs3', lat: 12.9450, lng: 80.1940, name: 'Poonamallee High Road', type: 'blackspot', severity: 'medium', desc: 'Multiple accident history' },
+    { id: 'bs4', lat: 13.0150, lng: 80.2280, name: 'Guindy Racetrack', type: 'blackspot', severity: 'medium', desc: 'Sharp curve accident zone' },
+    { id: 'bs5', lat: 12.9700, lng: 80.2400, name: 'Thoraipakkam OMR', type: 'blackspot', severity: 'high', desc: 'High-speed road, frequent crashes' },
+    { id: 'bs6', lat: 13.0450, lng: 80.2650, name: 'Thiruvanmiyur MRTS', type: 'blackspot', severity: 'medium', desc: 'Dense traffic accident zone' },
+    { id: 'bs7', lat: 12.8770, lng: 80.0810, name: 'GST Road Singaperumal', type: 'blackspot', severity: 'high', desc: 'NH-45 highway accident hotspot' }
   ]
 };
 
@@ -43,6 +52,7 @@ const translations = {
     nav_report: 'Report Accident',
     nav_about: 'About',
     nav_contacts: 'Saved Contacts',
+    nav_hazards: 'Hazard Map',
     hero_title: 'Road Safety Emergency Response',
     hero_subtitle: 'Instant help when you need it most',
     sos_button: 'SOS EMERGENCY',
@@ -88,6 +98,8 @@ const translations = {
     about_title: 'About RoadSoS',
     about_desc: 'Built for the National Road Safety Hackathon 2026 organized by IIT Madras (CoERS). Our mission is to reduce emergency response time and save lives on Indian roads.',
     privacy: 'Your location data is used only during emergencies and never stored permanently.',
+    hazards_title: '⚠️ Community Hazard Map',
+    hazards_subtitle: 'Report & view road hazards — potholes, debris, broken signals, accident black spots',
     contacts_title: '💾 Saved Contacts',
     contacts_prompt: 'Tap the heart icon on any service to save it here for quick access.',
     lang_switch: 'हिन्दी',
@@ -104,6 +116,7 @@ const translations = {
     nav_report: 'दुर्घटना रिपोर्ट',
     nav_about: 'हमारे बारे में',
     nav_contacts: 'सहेजे गए संपर्क',
+    nav_hazards: 'खतरे का नक्शा',
     hero_title: 'सड़क सुरक्षा आपातकालीन प्रतिक्रिया',
     hero_subtitle: 'जरूरत पड़ने पर तुरंत मदद',
     sos_button: 'एसओएस आपातकालीन',
@@ -149,6 +162,8 @@ const translations = {
     about_title: 'RoadSoS के बारे में',
     about_desc: 'IIT Madras (CoERS) द्वारा आयोजित नेशनल रोड सेफ्टी हैकाथॉन 2026 के लिए बनाया गया। हमारा मिशन भारतीय सड़कों पर आपातकालीन प्रतिक्रिया समय कम करना और जीवन बचाना है।',
     privacy: 'आपका स्थान डेटा केवल आपातकाल के दौरान उपयोग किया जाता है और कभी स्थायी रूप से संग्रहीत नहीं किया जाता।',
+    hazards_title: '⚠️ सामुदायिक खतरा मानचित्र',
+    hazards_subtitle: 'सड़क खतरों की रिपोर्ट करें और देखें — गड्ढे, मलबा, टूटे सिग्नल, दुर्घटना ब्लैक स्पॉट',
     contacts_title: '💾 सहेजे गए संपर्क',
     contacts_prompt: 'त्वरित पहुंच के लिए किसी भी सेवा पर हृदय आइकन टैप करें।',
     lang_switch: 'English',
