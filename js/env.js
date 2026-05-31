@@ -1,6 +1,10 @@
 const ENV = {};
 
 async function loadEnv() {
+  if (window.__ENV__) {
+    Object.assign(ENV, window.__ENV__);
+    return;
+  }
   try {
     const res = await fetch('/.env');
     if (!res.ok) return;

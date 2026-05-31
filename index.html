@@ -284,7 +284,7 @@
   <section id="hazards" class="section-page section" style="display:none;background:var(--gray-50)">
     <div class="container">
       <h2 class="section-title" data-i18n="hazards_title">⚠️ Community Hazard Map</h2>
-      <p class="section-sub" data-i18n="hazards_subtitle">Report & view road hazards — potholes, debris, broken signals, accident black spots</p>
+      <p class="section-sub" data-i18n="hazards_subtitle">Report &amp; view road hazards — potholes, debris, broken signals, accident black spots</p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)">
@@ -318,7 +318,7 @@
   <section id="profile" class="section-page section" style="display:none;background:var(--gray-50)">
     <div class="container" style="max-width:600px">
       <h2 class="section-title">👤 My Emergency Profile</h2>
-      <p class="section-sub">Your medical & vehicle info — shared with responders on SOS</p>
+      <p class="section-sub">Your medical &amp; vehicle info — shared with responders on SOS</p>
 
       <div style="background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px">
         <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--blue-dark)">🚗 Vehicle Details</h4>
@@ -354,8 +354,8 @@
 
       <div style="background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:40px;text-align:center">
         <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:12px;color:var(--blue-dark)">📱 Emergency QR Code</h4>
-        <p style="font-size:0.8rem;color:var(--gray-500);margin-bottom:12px">First responders can scan this for your medical info & emergency contacts</p>
-        <img id="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=RoadSoS%20Profile%3A%20Save%20your%20profile%20first" alt="QR Code" style="width:180px;height:180px;border-radius:var(--radius-sm);border:2px solid var(--gray-200);margin:0 auto;display:block">
+        <p style="font-size:0.8rem;color:var(--gray-500);margin-bottom:12px">First responders can scan this for your medical info &amp; emergency contacts</p>
+        <img id="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=RoadSoS%20Profile%3A%20Save%20your%20profile%20first" alt="QR Code" style="width:180px;height:180px;border-radius:var(--radius-sm);border:2px solid var(--gray-200);margin:0 auto;display:block">
         <button class="action-btn share-btn" onclick="shareQR()" style="margin-top:12px;display:inline-flex">📤 Share QR Code</button>
       </div>
     </div>
@@ -446,6 +446,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/env.netlify.js"></script>
   <script src="js/env.js"></script>
   <script src="js/groq.js"></script>
   <script src="js/firebase.js"></script>
