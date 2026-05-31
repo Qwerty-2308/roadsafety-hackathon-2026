@@ -602,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('online', handleOnline);
   if (!navigator.onLine) handleOffline();
 
+  initGroq();
   detectLocation();
   renderEmergencyNumbers();
   renderSaved();
