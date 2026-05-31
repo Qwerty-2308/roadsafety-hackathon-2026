@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="RoadSoS - Location-based emergency road safety assistant. Instant help for road accident victims.">
+  <meta name="theme-color" content="#E63946">
+  <title>RoadSoS - Emergency Road Safety</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ctext y='32' font-size='32'%3E🆘%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="offline-banner" class="offline-banner">📡 Offline — Showing cached data</div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="#" class="nav-brand" onclick="showSection('home')">
+        <span class="brand-icon">🆘</span> RoadSoS
+      </a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#" data-section="home" class="active" onclick="showSection('home')" data-i18n="nav_home">Home</a></li>
+        <li><a href="#" data-section="services" onclick="showSection('services')" data-i18n="nav_services">Emergency Services</a></li>
+        <li><a href="#" data-section="report" onclick="showSection('report')" data-i18n="nav_report">Report Accident</a></li>
+        <li><a href="#" data-section="about" onclick="showSection('about')" data-i18n="nav_about">About</a></li>
+        <li><a href="#" data-section="contacts" onclick="showSection('contacts')" data-i18n="nav_contacts">Saved Contacts</a></li>
+        <li><button class="lang-btn" id="lang-btn" onclick="switchLang()">हिन्दी</button></li>
+      </ul>
+      <button class="mobile-toggle" onclick="toggleNav()" aria-label="Toggle navigation">☰</button>
+    </div>
+  </nav>
+  <div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ===== HOME (Hero + How It Works) ===== -->
+  <section id="home" class="section-page">
+    <div class="hero">
+      <div class="hero-content">
+        <div class="hero-badge">🚗 National Road Safety Hackathon 2026</div>
+        <h1 data-i18n="hero_title">Road Safety Emergency Response</h1>
+        <p data-i18n="hero_subtitle">Instant help when you need it most</p>
+        <div class="sos-wrapper">
+          <div class="sos-ring"></div>
+          <div class="sos-ring"></div>
+          <div class="sos-ring"></div>
+          <button id="sos-btn" class="sos-btn">
+            <span class="sos-icon">🆘</span>
+            <span data-i18n="sos_button">SOS EMERGENCY</span>
+            <span class="sos-sub" data-i18n="tap_sos">Tap the SOS button in an emergency</span>
+          </button>
+        </div>
+
+        <div id="location-status" class="location-status" style="max-width:400px;margin:0 auto 16px">
+          <span class="spinner" style="width:16px;height:16px;border-width:2px"></span>
+          <span data-i18n="loading_location">Detecting your location...</span>
+        </div>
+
+        <div class="emergency-numbers" id="emergency-numbers"></div>
+      </div>
+    </div>
+
+    <div class="section" style="background:var(--white);">
+      <div class="container">
+        <h2 class="section-title" data-i18n="how_title">How It Works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-icon red">🆘</div>
+            <h3 data-i18n="how_step1">Tap SOS or select service</h3>
+            <p>One tap connects you to emergency response</p>
+          </div>
+          <div class="step">
+            <div class="step-icon blue">📍</div>
+            <h3 data-i18n="how_step2">We detect your location</h3>
+            <p>GPS pinpoints your exact position</p>
+          </div>
+          <div class="step">
+            <div class="step-icon green">🚑</div>
+            <h3 data-i18n="how_step3">Nearest help reaches you</h3>
+            <p>Emergency services dispatched immediately</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== EMERGENCY SERVICES ===== -->
+  <section id="services" class="section-page services-section section">
+    <div class="container">
+      <h2 class="section-title" data-i18n="services_title">Nearby Emergency Services</h2>
+      <p class="section-sub" data-i18n="nearest_services">Nearest services to your location</p>
+
+      <div class="services-toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search by area, pincode..." autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')" data-i18n="filter_all">All</button>
+          <button class="filter-btn" data-filter="trauma" onclick="setFilter('trauma')" data-i18n="filter_trauma">Trauma</button>
+          <button class="filter-btn" data-filter="ambulance" onclick="setFilter('ambulance')" data-i18n="filter_ambulance">Ambulance</button>
+          <button class="filter-btn" data-filter="police" onclick="setFilter('police')" data-i18n="filter_police">Police</button>
+          <button class="filter-btn" data-filter="rescue" onclick="setFilter('rescue')" data-i18n="filter_rescue">Rescue</button>
+          <button class="filter-btn" data-filter="contact" onclick="setFilter('contact')" data-i18n="filter_contacts">Contacts</button>
+        </div>
+        <div class="sort-group">
+          <button class="sort-btn active" data-sort="distance" onclick="setSort('distance')" data-i18n="sort_distance">Distance</button>
+          <button class="sort-btn" data-sort="rating" onclick="setSort('rating')" data-i18n="sort_rating">Rating</button>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="view-list" onclick="switchView('list')" data-i18n="list_view">📋 List</button>
+          <button class="view-btn" id="view-map" onclick="switchView('map')" data-i18n="map_view">🗺️ Map</button>
+        </div>
+      </div>
+
+      <div class="services-layout">
+        <div class="services-list" id="services-list">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading services...</p>
+          </div>
+        </div>
+        <div class="map-container" id="map-container" style="display:none">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== REPORT ACCIDENT ===== -->
+  <section id="report" class="section-page report-section section" style="display:none">
+    <div class="container">
+      <h2 class="section-title" data-i18n="report_title">Report an Accident</h2>
+      <p class="section-sub" data-i18n="report_subtitle">Help us help you faster</p>
+
+      <form class="report-form" id="report-form">
+        <div class="form-group">
+          <label data-i18n="report_location">📍 Your Location</label>
+          <input type="text" id="report-location" readonly placeholder="Auto-detected location">
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="report_severity">⚠️ Severity</label>
+          <input type="hidden" id="report-severity" value="moderate">
+          <div class="severity-group">
+            <div class="severity-option minor" onclick="selectSeverity(this,'minor')" data-i18n="report_minor">🟢 Minor</div>
+            <div class="severity-option moderate selected" onclick="selectSeverity(this,'moderate')" data-i18n="report_moderate">🟡 Moderate</div>
+            <div class="severity-option severe" onclick="selectSeverity(this,'severe')" data-i18n="report_severe">🟠 Severe</div>
+            <div class="severity-option critical" onclick="selectSeverity(this,'critical')" data-i18n="report_critical">🔴 Critical</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="report_photo">📷 Upload Photo</label>
+          <label class="photo-upload">
+            <input type="file" accept="image/*" capture="environment" onchange="handlePhotoUpload(this)">
+            <span id="photo-label" data-i18n="report_photo">📷 Tap to take a photo</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="report_desc">📝 Description</label>
+          <textarea id="report-desc" data-i18n-placeholder="report_desc_placeholder" placeholder="Describe the accident, number of people involved, any injuries..."></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          🚨 <span data-i18n="report_submit">Send Report to Emergency Services</span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== ABOUT ===== -->
+  <section id="about" class="section-page about-section section" style="display:none">
+    <div class="container">
+      <div class="about-content">
+        <h2 class="section-title" data-i18n="about_title">About RoadSoS</h2>
+        <p data-i18n="about_desc">Built for the National Road Safety Hackathon 2026 organized by IIT Madras (CoERS). Our mission is to reduce emergency response time and save lives on Indian roads.</p>
+        <p data-i18n="privacy">Your location data is used only during emergencies and never stored permanently.</p>
+
+        <div class="about-cards">
+          <div class="about-card">
+            <div class="about-icon">🎯</div>
+            <h4>Our Mission</h4>
+            <p>Reduce emergency response time on Indian roads through location-based technology</p>
+          </div>
+          <div class="about-card">
+            <div class="about-icon">🏛️</div>
+            <h4>IIT Madras CoERS</h4>
+            <p>Centre of Excellence in Road Safety — pioneering research and innovation</p>
+          </div>
+          <div class="about-card">
+            <div class="about-icon">🔒</div>
+            <h4>Privacy First</h4>
+            <p>Location data is never stored — used only for real-time emergency dispatch</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SAVED CONTACTS ===== -->
+  <section id="contacts" class="section-page saved-section section" style="display:none">
+    <div class="container">
+      <h2 class="section-title" data-i18n="contacts_title">💾 Saved Contacts</h2>
+      <p class="section-sub" data-i18n="contacts_prompt">Tap the heart icon on any service to save it for quick access.</p>
+      <div id="saved-list" class="saved-list">
+        <div class="loading-spinner"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="container">
+      <p data-i18n="footer_text">© 2026 RoadSoS — National Road Safety Hackathon, IIT Madras CoERS</p>
+      <p style="margin-top:8px;font-size:0.8rem;opacity:0.6">🆘 In case of emergency, dial 112 (National Emergency Number)</p>
+    </div>
+  </footer>
+
+  <!-- ===== SOS MODAL ===== -->
+  <div id="sos-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-icon">🚨</div>
+      <h3 data-i18n="sos_confirm">⚠️ Confirm Emergency</h3>
+      <p>This will alert nearby emergency services with your current location.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="cancelSOS()" data-i18n="sos_cancel">Cancel</button>
+        <button class="modal-confirm" onclick="confirmSOS()" data-i18n="sos_confirm">🚨 Confirm Emergency</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
