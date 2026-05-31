@@ -9,6 +9,10 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ctext y='32' font-size='32'%3E🆘%3C/text%3E%3C/svg%3E" type="image/svg+xml">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </head>
 <body>
   <div id="offline-banner" class="offline-banner">📡 Offline — Showing cached data</div>
@@ -96,6 +100,7 @@
         <div class="search-box">
           <span class="search-icon">🔍</span>
           <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search by area, pincode..." autocomplete="off">
+          <div class="smart-search-badge" id="smart-search-badge">🤖 AI-powered search active</div>
         </div>
         <div class="filter-group">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all')" data-i18n="filter_all">All</button>
@@ -233,8 +238,60 @@
     </div>
   </div>
 
+  <!-- ===== SMART SOS ANALYSIS MODAL ===== -->
+  <div id="sos-analysis-modal" class="modal-overlay analysis-overlay">
+    <div class="modal">
+      <div class="modal-icon">🤖</div>
+      <h3>🚨 AI Emergency Assistant</h3>
+      <div id="sos-analysis-content" class="analysis-content">
+        <div class="ai-thinking"><div class="spinner-small"></div> AI analyzing your situation...</div>
+      </div>
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="modal-confirm" onclick="closeAnalysis()" style="flex:1">✅ Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI ANALYSIS MODAL (after report) ===== -->
+  <div id="analysis-modal" class="modal-overlay analysis-overlay">
+    <div class="modal">
+      <div class="modal-icon">🤖</div>
+      <h3>📋 AI Accident Analysis</h3>
+      <div id="analysis-content" class="analysis-content">
+        <div class="ai-thinking"><div class="spinner-small"></div> Analyzing your report...</div>
+      </div>
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="modal-confirm" onclick="closeReportAnalysis()" style="flex:1">✅ Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI CHAT ===== -->
+  <button class="chat-toggle" id="chat-toggle" onclick="toggleChat()" aria-label="AI Assistant">
+    🤖
+    <span class="unread-dot" id="chat-dot" style="display:none"></span>
+  </button>
+  <div class="chat-panel" id="chat-panel">
+    <div class="chat-header">
+      <h4>🤖 RoadSoS AI Assistant</h4>
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-welcome">
+        <div class="welcome-icon">🆘</div>
+        <p>Hi! I'm your AI road safety assistant. Ask me anything about road emergencies, first aid, or what to do in an accident.</p>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chat-input" placeholder="Ask about road safety..." onkeypress="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">➤</button>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/groq.js"></script>
+  <script src="js/firebase.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -187,6 +187,19 @@ function confirmSOS() {
   btn.classList.add('sending');
   btn.innerHTML = `<span class="sos-icon">🆘</span><span>${t('sos_sending')}</span>`;
 
+  if (userLocation) {
+    const url = `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+    smartSOSBroadcast(userLocation.lat, userLocation.lng, '').then(advice => {
+      document.getElementById('sos-analysis-content').innerHTML = `
+        <div class="ai-section">
+          <h5>🚨 AI Emergency Guidance</h5>
+          <div style="font-size:0.85rem;color:var(--gray-600);line-height:1.6">${advice.replace(/\n/g, '<br>')}</div>
+        </div>`;
+      document.getElementById('sos-analysis-modal').classList.add('show');
+    }).catch(() => {});
+    signInAnonymously();
+  }
+
   setTimeout(() => {
     btn.classList.remove('sending');
     btn.classList.add('sent');
@@ -205,6 +218,10 @@ function confirmSOS() {
       btn.innerHTML = `<span class="sos-icon">🆘</span><span>${t('sos_button')}</span><span class="sos-sub">${t('tap_sos')}</span>`;
     }, 6000);
   }, 2500);
+}
+
+function closeAnalysis() {
+  document.getElementById('sos-analysis-modal').classList.remove('show');
 }
 
 function cancelSOS() {
@@ -361,18 +378,62 @@ function handlePhotoUpload(input) {
 function submitReport(e) {
   e.preventDefault();
   const desc = document.getElementById('report-desc').value;
+  const severity = document.getElementById('report-severity').value;
   if (!desc.trim()) { showToast('Please describe the accident'); return; }
-  showToast(t('report_sent'));
+  showToast('🤖 AI analyzing your report...', 2000);
+
+  const reportData = {
+    severity,
+    description: desc,
+    location: userLocation ? `${userLocation.lat},${userLocation.lng}` : 'unknown',
+    timestamp: new Date().toISOString()
+  };
+
+  const photoInput = document.querySelector('#report-form input[type="file"]');
+  const photoFile = photoInput?.files?.[0];
+
+  (async () => {
+    if (photoFile) {
+      const url = await uploadPhoto(photoFile);
+      if (url) reportData.photoUrl = url;
+    }
+    const reportId = await saveReport(reportData);
+    if (reportId) showToast(`✅ Report #${reportId.slice(0,6)} saved to cloud`, 4000);
+  })();
+
+  analyzeAccident(severity, desc).then(analysis => {
+    document.getElementById('analysis-content').innerHTML = `
+      <div class="analysis-section"><h5>🚑 First Aid Guidance</h5>${formatAnalysis(analysis)}</div>`;
+    document.getElementById('analysis-modal').classList.add('show');
+  }).catch(() => {
+    document.getElementById('analysis-content').innerHTML =
+      `<p style="color:var(--gray-500);font-size:0.9rem">Report submitted. Help is on the way.</p>`;
+    document.getElementById('analysis-modal').classList.add('show');
+  });
+
   if (userLocation) {
     const url = `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
     if (navigator.share) {
-      navigator.share({ title: 'Accident Report', text: `🚨 Accident reported at ${url}\nSeverity: ${document.getElementById('report-severity').value}\n${desc}`, url }).catch(() => {});
+      navigator.share({ title: 'Accident Report', text: `🚨 Accident reported at ${url}\nSeverity: ${severity}\n${desc}`, url }).catch(() => {});
     }
   }
   document.getElementById('report-form').reset();
   document.getElementById('report-severity').value = 'moderate';
   document.querySelectorAll('.severity-option').forEach(o => o.classList.remove('selected'));
   document.getElementById('photo-label').textContent = `📷 ${t('report_photo')}`;
+}
+
+function closeReportAnalysis() {
+  document.getElementById('analysis-modal').classList.remove('show');
+}
+
+function formatAnalysis(text) {
+  const html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\s*[-•]\s*/g, '<br>• ')
+    .replace(/\n\d+\.\s*/g, '<br>')
+    .replace(/\n/g, '<br>');
+  return `<div style="font-size:0.85rem;color:var(--gray-600);line-height:1.6;margin-top:4px">${html}</div>`;
 }
 
 // Render Emergency Numbers
@@ -459,6 +520,82 @@ function handleOnline() {
   document.getElementById('offline-banner').classList.remove('show');
 }
 
+// AI Chat
+let chatHistory = [];
+
+function toggleChat() {
+  document.getElementById('chat-panel').classList.toggle('open');
+  document.getElementById('chat-dot').style.display = 'none';
+  if (document.getElementById('chat-panel').classList.contains('open')) {
+    document.getElementById('chat-input').focus();
+  }
+}
+
+function addChatMsg(text, role) {
+  const container = document.getElementById('chat-messages');
+  const welcome = container.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+  const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `${text}<span class="msg-time">${time}</span>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addChatMsg(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+
+  const thinking = document.createElement('div');
+  thinking.className = 'chat-msg bot';
+  thinking.innerHTML = '<div class="ai-thinking" style="margin:0;padding:8px 12px"><div class="spinner-small"></div> Thinking...</div>';
+  document.getElementById('chat-messages').appendChild(thinking);
+
+  try {
+    const response = await chatWithAI(msg);
+    thinking.remove();
+    addChatMsg(response, 'bot');
+    chatHistory.push({ role: 'assistant', content: response });
+  } catch {
+    thinking.remove();
+    addChatMsg('⚠️ Sorry, I had trouble connecting. Please try again.', 'bot');
+  }
+}
+
+// Smart Search
+let searchTimer;
+
+function setupSmartSearch() {
+  const input = document.getElementById('search-input');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    const badge = document.getElementById('smart-search-badge');
+    if (badge) badge.classList.remove('show');
+    searchTimer = setTimeout(async () => {
+      const q = input.value.trim();
+      if (q.length < 3) { renderServices(); return; }
+      try {
+        const ids = await smartSearch(q);
+        if (ids && ids.length) {
+          const filtered = allServices.filter(s => ids.includes(s.id));
+          if (filtered.length) {
+            renderServices();
+            if (badge) badge.classList.add('show');
+            return;
+          }
+        }
+      } catch {}
+      renderServices();
+    }, 600);
+  });
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('offline', handleOffline);
@@ -471,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('sos-btn').addEventListener('click', triggerSOS);
 
-  document.getElementById('search-input')?.addEventListener('input', renderServices);
+  setupSmartSearch();
 
   document.getElementById('report-form')?.addEventListener('submit', submitReport);
 });
