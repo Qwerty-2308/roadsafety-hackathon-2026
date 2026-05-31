@@ -1,18 +1,18 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyBzdIW5GriL9MHfI_aF3dH8_vcyRg7xPCk",
-  authDomain: "spendly-505e3.firebaseapp.com",
-  projectId: "spendly-505e3",
-  storageBucket: "spendly-505e3.firebasestorage.app",
-  messagingSenderId: "608274656251",
-  appId: "1:608274656251:web:834e33dd412e5a8f64395e",
-  measurementId: "G-PZ7GMK3XDM"
-};
-
 let fbApp, fbFirestore, fbStorage, fbAuth;
 
 function initFirebase() {
   if (fbApp) return;
-  fbApp = firebase.initializeApp(firebaseConfig, 'roadsos');
+  const config = {
+    apiKey: env('FIREBASE_API_KEY'),
+    authDomain: env('FIREBASE_AUTH_DOMAIN'),
+    projectId: env('FIREBASE_PROJECT_ID'),
+    storageBucket: env('FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: env('FIREBASE_MESSAGING_SENDER_ID'),
+    appId: env('FIREBASE_APP_ID'),
+    measurementId: env('FIREBASE_MEASUREMENT_ID')
+  };
+  if (!config.apiKey || !config.projectId) { console.warn('Firebase config missing in .env'); return; }
+  fbApp = firebase.initializeApp(config, 'roadsos');
   fbFirestore = firebase.firestore(fbApp);
   fbStorage = firebase.storage(fbApp);
   fbAuth = firebase.auth(fbApp);
@@ -21,6 +21,7 @@ function initFirebase() {
 
 async function signInAnonymously() {
   initFirebase();
+  if (!fbAuth) return null;
   try {
     await fbAuth.signInAnonymously();
     return fbAuth.currentUser;
@@ -32,8 +33,9 @@ async function signInAnonymously() {
 
 async function saveReport(data) {
   initFirebase();
+  if (!fbFirestore) return null;
   try {
-    const user = fbAuth.currentUser || await signInAnonymously();
+    const user = fbAuth?.currentUser || await signInAnonymously();
     const report = {
       ...data,
       userId: user?.uid || 'anonymous',
@@ -50,9 +52,10 @@ async function saveReport(data) {
 
 async function uploadPhoto(file) {
   initFirebase();
+  if (!fbStorage) return null;
   try {
-    const user = fbAuth.currentUser || await signInAnonymously();
-    const path = `accident_photos/${user.uid}/${Date.now()}_${file.name}`;
+    const user = fbAuth?.currentUser || await signInAnonymously();
+    const path = `accident_photos/${user?.uid || 'anon'}/${Date.now()}_${file.name}`;
     const ref = fbStorage.ref(path);
     const snapshot = await ref.put(file);
     return await snapshot.ref.getDownloadURL();
@@ -64,8 +67,9 @@ async function uploadPhoto(file) {
 
 async function syncSavedContacts(contactIds) {
   initFirebase();
+  if (!fbFirestore) return false;
   try {
-    const user = fbAuth.currentUser || await signInAnonymously();
+    const user = fbAuth?.currentUser || await signInAnonymously();
     await fbFirestore.collection('user_data').doc(user.uid).set({
       savedContacts: contactIds,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()

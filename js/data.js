@@ -1,10 +1,10 @@
 const emergencyData = {
   trauma_centers: [
-    { id: 'tc1', name: 'Apollo Hospital', lat: 13.0358, lng: 80.2464, phone: '+91-44-28293333', type: 'trauma', subtype: '24/7 Trauma Center', rating: 4.5, address: '21 Greams Lane, Off Greams Road, Chennai' },
-    { id: 'tc2', name: 'MIOT International', lat: 13.0012, lng: 80.2378, phone: '+91-44-42002288', type: 'trauma', subtype: 'Multi-Specialty Hospital', rating: 4.4, address: '4/112, Mount Road, Chennai' },
-    { id: 'tc3', name: 'Billroth Hospital', lat: 13.0550, lng: 80.2490, phone: '+91-44-42895555', type: 'trauma', subtype: 'Trauma Care', rating: 4.2, address: '43, Shenoy Nagar, Chennai' },
-    { id: 'tc4', name: 'Fortis Malar', lat: 13.0475, lng: 80.2470, phone: '+91-44-42892222', type: 'trauma', subtype: 'Emergency & Trauma', rating: 4.3, address: '52, First Main Road, Gandhi Nagar, Adyar, Chennai' },
-    { id: 'tc5', name: 'IIT Madras Hospital', lat: 12.9916, lng: 80.2336, phone: '+91-44-22578000', type: 'trauma', subtype: 'Campus Trauma Center', rating: 4.0, address: 'IIT Madras Campus, Chennai' }
+    { id: 'tc1', name: 'Apollo Hospital', lat: 13.0358, lng: 80.2464, phone: '+91-44-28293333', type: 'trauma', subtype: '24/7 Trauma Center', rating: 4.5, address: '21 Greams Lane, Off Greams Road, Chennai', beds: { icu: 12, emergency: 8 } },
+    { id: 'tc2', name: 'MIOT International', lat: 13.0012, lng: 80.2378, phone: '+91-44-42002288', type: 'trauma', subtype: 'Multi-Specialty Hospital', rating: 4.4, address: '4/112, Mount Road, Chennai', beds: { icu: 8, emergency: 5 } },
+    { id: 'tc3', name: 'Billroth Hospital', lat: 13.0550, lng: 80.2490, phone: '+91-44-42895555', type: 'trauma', subtype: 'Trauma Care', rating: 4.2, address: '43, Shenoy Nagar, Chennai', beds: { icu: 5, emergency: 10 } },
+    { id: 'tc4', name: 'Fortis Malar', lat: 13.0475, lng: 80.2470, phone: '+91-44-42892222', type: 'trauma', subtype: 'Emergency & Trauma', rating: 4.3, address: '52, First Main Road, Gandhi Nagar, Adyar, Chennai', beds: { icu: 15, emergency: 12 } },
+    { id: 'tc5', name: 'IIT Madras Hospital', lat: 12.9916, lng: 80.2336, phone: '+91-44-22578000', type: 'trauma', subtype: 'Campus Trauma Center', rating: 4.0, address: 'IIT Madras Campus, Chennai', beds: { icu: 4, emergency: 6 } }
   ],
   ambulances: [
     { id: 'amb1', name: '108 Emergency Services', lat: 13.0316, lng: 80.2204, phone: '108', type: 'ambulance', subtype: 'Emergency Ambulance', rating: 4.6, address: 'Control Room, Chennai' },

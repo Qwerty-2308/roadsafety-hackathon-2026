@@ -29,6 +29,7 @@
         <li><a href="#" data-section="report" onclick="showSection('report')" data-i18n="nav_report">Report Accident</a></li>
         <li><a href="#" data-section="about" onclick="showSection('about')" data-i18n="nav_about">About</a></li>
         <li><a href="#" data-section="contacts" onclick="showSection('contacts')" data-i18n="nav_contacts">Saved Contacts</a></li>
+        <li><a href="#" data-section="profile" onclick="showSection('profile')">👤 My Profile</a></li>
         <li><button class="lang-btn" id="lang-btn" onclick="switchLang()">हिन्दी</button></li>
       </ul>
       <button class="mobile-toggle" onclick="toggleNav()" aria-label="Toggle navigation">☰</button>
@@ -217,6 +218,58 @@
     </div>
   </section>
 
+  <!-- ===== MY PROFILE ===== -->
+  <section id="profile" class="section-page section" style="display:none;background:var(--gray-50)">
+    <div class="container" style="max-width:600px">
+      <h2 class="section-title">👤 My Emergency Profile</h2>
+      <p class="section-sub">Your medical & vehicle info — shared with responders on SOS</p>
+
+      <div style="background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px">
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--blue-dark)">🚗 Vehicle Details</h4>
+        <div class="form-group"><label>Vehicle Number</label><input type="text" id="profile-vehicle" placeholder="TN 01 AB 1234" maxlength="20"></div>
+      </div>
+
+      <div style="background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px">
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--blue-dark)">🩺 Medical Info</h4>
+        <div class="form-group"><label>Blood Group</label>
+          <select id="profile-blood"><option value="">Select...</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+        </div>
+        <div class="form-group"><label>Medical Conditions / Allergies</label>
+          <textarea id="profile-conditions" placeholder="e.g. Diabetes, Allergic to Penicillin, Asthma..." rows="2"></textarea>
+        </div>
+      </div>
+
+      <div style="background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px">
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--blue-dark)">📞 Emergency Contacts (notified on SOS)</h4>
+        <div id="profile-contacts">
+          <div class="form-group"><label>Contact 1</label>
+            <div style="display:flex;gap:8px"><input type="text" placeholder="Name" class="ec-name" style="flex:1"><input type="tel" placeholder="Phone" class="ec-phone" style="flex:1"></div>
+          </div>
+          <div class="form-group"><label>Contact 2</label>
+            <div style="display:flex;gap:8px"><input type="text" placeholder="Name" class="ec-name" style="flex:1"><input type="tel" placeholder="Phone" class="ec-phone" style="flex:1"></div>
+          </div>
+          <div class="form-group"><label>Contact 3</label>
+            <div style="display:flex;gap:8px"><input type="text" placeholder="Name" class="ec-name" style="flex:1"><input type="tel" placeholder="Phone" class="ec-phone" style="flex:1"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-btn" onclick="saveProfile()" style="margin-bottom:40px">💾 Save Profile</button>
+    </div>
+  </section>
+
+  <!-- ===== ACCIDENT DETECTION BANNER ===== -->
+  <div id="crash-alert" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(230,57,70,0.95);z-index:5000;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+    <div style="font-size:4rem;margin-bottom:16px">🚨</div>
+    <h2 style="color:white;font-size:1.6rem;margin-bottom:8px">Possible Accident Detected!</h2>
+    <p style="color:rgba(255,255,255,0.8);margin-bottom:24px;max-width:400px">Sudden impact detected. SOS will be sent automatically in...</p>
+    <div style="font-size:4rem;font-weight:900;color:white;margin-bottom:24px" id="crash-countdown">10</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+      <button onclick="cancelCrashAlert()" style="padding:14px 32px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.2);color:white;font-size:1rem;font-weight:700;border:2px solid rgba(255,255,255,0.3)">✅ I'm OK — Cancel</button>
+      <button onclick="triggerCrashSOS()" style="padding:14px 32px;border-radius:var(--radius-sm);background:white;color:var(--red);font-size:1rem;font-weight:700">🚨 Send SOS Now</button>
+    </div>
+  </div>
+
   <!-- ===== FOOTER ===== -->
   <footer>
     <div class="container">
@@ -290,6 +343,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/env.js"></script>
   <script src="js/groq.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/app.js"></script>

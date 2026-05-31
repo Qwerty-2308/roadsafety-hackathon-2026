@@ -1,22 +1,14 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-let GROQ_API_KEY = '';
 
-async function initGroq() {
-  try {
-    const res = await fetch('/.env');
-    const text = await res.text();
-    const match = text.match(/^GROQ_API_KEY=(.+)$/m);
-    if (match) GROQ_API_KEY = match[1].trim();
-  } catch {}
-}
+function groqKey() { return env('GROQ_API_KEY'); }
 
 async function groqChat(messages, options = {}) {
-  if (!GROQ_API_KEY) await initGroq();
-  if (!GROQ_API_KEY) throw new Error('Groq API key not found. Create .env file with GROQ_API_KEY');
+  const key = groqKey();
+  if (!key) throw new Error('Groq API key missing. Add GROQ_API_KEY to .env');
   const res = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

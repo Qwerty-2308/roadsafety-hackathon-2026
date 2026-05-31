@@ -251,65 +251,6 @@ function shareLocation() {
   }
 }
 
-// Render Services
-function renderServices() {
-  const query = (document.getElementById('search-input')?.value || '').toLowerCase();
-  let filtered = allServices.filter(s => {
-    if (currentFilter !== 'all' && s.type !== currentFilter) return false;
-    if (query && !s.name.toLowerCase().includes(query) && !(s.subtype || '').toLowerCase().includes(query) && !(s.address || '').toLowerCase().includes(query)) return false;
-    return true;
-  });
-
-  filtered.sort((a, b) => currentSort === 'distance' ? a.distance - b.distance : b.rating - a.rating);
-
-  const container = document.getElementById('services-list');
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:3rem;margin-bottom:12px">🔍</div><p>${t('no_services')}</p></div>`;
-    return;
-  }
-
-  container.innerHTML = filtered.map(s => {
-    const dist = s.distance ? `<span>📏 ${s.distance.toFixed(1)} ${t('km')}</span>` : '';
-    const rating = s.rating ? `<span>⭐ ${s.rating}</span>` : '';
-    const saved = isSaved(s.id) ? 'saved' : '';
-    const d = userLocation && s.lat ? `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}` : '#';
-
-    return `
-      <div class="service-card" onclick="openMapFor('${s.id}')">
-        <div class="card-icon ${s.type}">${getTypeIcon(s.type)}</div>
-        <div class="card-body">
-          <div class="card-name">${s.name}</div>
-          <div class="card-type">${s.subtype}</div>
-          <div class="card-meta">${dist}${rating}${s.address ? `<span>📍 ${s.address}</span>` : ''}</div>
-          <div class="card-actions">
-            ${s.phone ? `<button class="action-btn call-btn" onclick="event.stopPropagation();callNumber('${s.phone}')">📞 ${t('call')}</button>` : ''}
-            ${s.lat ? `<a href="${d}" target="_blank" class="action-btn dir-btn" onclick="event.stopPropagation()">🗺️ ${t('directions')}</a>` : ''}
-            <button class="action-btn share-btn" onclick="event.stopPropagation();shareService('${s.name}')">📤 ${t('share')}</button>
-            <button class="action-btn save-btn ${saved}" onclick="event.stopPropagation();toggleSave('${s.id}')">${saved ? '❤️' : '🤍'} ${t('save')}</button>
-          </div>
-        </div>
-        ${s.distance ? `<div class="distance-badge">${(s.distance * 1000).toFixed(0)}m</div>` : ''}
-      </div>
-    `;
-  }).join('');
-
-  if (currentView === 'map' && map) {
-    const filteredIds = new Set(filtered.map(f => f.id));
-    markers.forEach(m => {
-      const inFilter = filteredIds.has(m.serviceId);
-      if (map.hasLayer(m) !== inFilter) {
-        if (inFilter) map.addLayer(m);
-        else map.removeLayer(m);
-      }
-    });
-    if (userLocation && filtered.length > 0) {
-      const bounds = L.latLngBounds([[userLocation.lat, userLocation.lng]]);
-      filtered.forEach(s => { if (s.lat && s.lng) bounds.extend([s.lat, s.lng]); });
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-    }
-  }
-}
-
 function shareService(name) {
   const msg = `RoadSoS - Check out: ${name}`;
   if (navigator.share) {
@@ -596,16 +537,208 @@ function setupSmartSearch() {
   });
 }
 
+// ===== PROFILE =====
+function loadProfile() {
+  try {
+    const p = JSON.parse(localStorage.getItem('roadsos_profile') || '{}');
+    if (p.vehicle) document.getElementById('profile-vehicle').value = p.vehicle;
+    if (p.blood) document.getElementById('profile-blood').value = p.blood;
+    if (p.conditions) document.getElementById('profile-conditions').value = p.conditions;
+    const names = document.querySelectorAll('#profile-contacts .ec-name');
+    const phones = document.querySelectorAll('#profile-contacts .ec-phone');
+    (p.contacts || []).forEach((c, i) => {
+      if (names[i]) names[i].value = c.name || '';
+      if (phones[i]) phones[i].value = c.phone || '';
+    });
+  } catch {}
+}
+
+function saveProfile() {
+  const names = document.querySelectorAll('#profile-contacts .ec-name');
+  const phones = document.querySelectorAll('#profile-contacts .ec-phone');
+  const contacts = [];
+  names.forEach((n, i) => {
+    if (n.value.trim() || phones[i].value.trim()) {
+      contacts.push({ name: n.value.trim(), phone: phones[i].value.trim() });
+    }
+  });
+  const profile = {
+    vehicle: document.getElementById('profile-vehicle').value.trim(),
+    blood: document.getElementById('profile-blood').value,
+    conditions: document.getElementById('profile-conditions').value.trim(),
+    contacts
+  };
+  localStorage.setItem('roadsos_profile', JSON.stringify(profile));
+  showToast('✅ Profile saved! Shared with emergency responders on SOS.', 3000);
+}
+
+function getProfile() {
+  try { return JSON.parse(localStorage.getItem('roadsos_profile') || '{}'); }
+  catch { return {}; }
+}
+
+// ===== ACCIDENT DETECTION =====
+let crashTimer = null;
+let crashCountdown = 10;
+let crashDetected = false;
+
+function startAccidentDetection() {
+  if (!window.DeviceMotionEvent && !window.DeviceOrientationEvent) return;
+  let lastAccel = null;
+  const THRESHOLD = 25;
+
+  window.addEventListener('devicemotion', e => {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x === null) return;
+    const mag = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    const delta = lastAccel !== null ? Math.abs(mag - lastAccel) : 0;
+    lastAccel = mag;
+
+    if (delta > THRESHOLD && !crashDetected && userLocation) {
+      crashDetected = true;
+      crashCountdown = 10;
+      document.getElementById('crash-alert').style.display = 'flex';
+      document.getElementById('crash-countdown').textContent = crashCountdown;
+      crashTimer = setInterval(() => {
+        crashCountdown--;
+        document.getElementById('crash-countdown').textContent = crashCountdown;
+        if (crashCountdown <= 0) {
+          clearInterval(crashTimer);
+          triggerCrashSOS();
+        }
+      }, 1000);
+    }
+  });
+}
+
+function cancelCrashAlert() {
+  crashDetected = false;
+  clearInterval(crashTimer);
+  document.getElementById('crash-alert').style.display = 'none';
+  showToast('✅ Accident alert cancelled', 2000);
+}
+
+function triggerCrashSOS() {
+  clearInterval(crashTimer);
+  document.getElementById('crash-alert').style.display = 'none';
+  crashDetected = false;
+  const profile = getProfile();
+  const contactsMsg = profile.contacts?.filter(c => c.phone).map(c => `👤 ${c.name}: ${c.phone}`).join('\n') || '';
+  const medicalMsg = profile.blood ? `\n🩸 Blood: ${profile.blood}` : '';
+  const vehicleMsg = profile.vehicle ? `\n🚗 Vehicle: ${profile.vehicle}` : '';
+
+  const btn = document.getElementById('sos-btn');
+  btn.classList.add('sending');
+  btn.innerHTML = `<span class="sos-icon">🆘</span><span>Auto-SOS from crash detection!</span>`;
+
+  setTimeout(() => {
+    btn.classList.remove('sending');
+    btn.classList.add('sent');
+    btn.innerHTML = `<span class="sos-icon">✅</span><span>Auto-SOS sent!</span>`;
+    showToast('🚨 Crash detected! SOS sent with your profile.', 6000);
+
+    if (userLocation) {
+      const url = `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+      const sosMsg = `🚨 CRASH ALERT from RoadSoS!\n📍 ${url}${medicalMsg}${vehicleMsg}\n\nEmergency Contacts:\n${contactsMsg || 'None set'}`;
+      if (navigator.share) {
+        navigator.share({ title: 'CRASH ALERT - RoadSoS', text: sosMsg }).catch(() => {});
+      }
+      smartSOSBroadcast(userLocation.lat, userLocation.lng, vehicleMsg).then(advice => {
+        document.getElementById('sos-analysis-content').innerHTML = `
+          <div class="ai-section"><h5>🚨 Crash Detected — AI Guidance</h5>
+          <div style="font-size:0.85rem;color:var(--gray-600);line-height:1.6">${advice.replace(/\n/g, '<br>')}</div></div>`;
+        document.getElementById('sos-analysis-modal').classList.add('show');
+      }).catch(() => {});
+    }
+
+    setTimeout(() => {
+      btn.classList.remove('sent');
+      btn.innerHTML = `<span class="sos-icon">🆘</span><span>${t('sos_button')}</span><span class="sos-sub">${t('tap_sos')}</span>`;
+    }, 8000);
+  }, 1500);
+}
+
+// ===== HOSPITAL STATUS =====
+function getBedStatus(beds) {
+  if (!beds) return '';
+  const total = beds.icu + beds.emergency;
+  if (total > 20) return '<span style="color:#16a34a;font-size:0.7rem">🟢 Available</span>';
+  if (total > 10) return '<span style="color:#f97316;font-size:0.7rem">🟡 Limited</span>';
+  return '<span style="color:#dc2626;font-size:0.7rem">🔴 Full</span>';
+}
+
+// Override renderServices to show bed status
+renderServices = function() {
+  const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+  let filtered = allServices.filter(s => {
+    if (currentFilter !== 'all' && s.type !== currentFilter) return false;
+    if (query && !s.name.toLowerCase().includes(query) && !(s.subtype || '').toLowerCase().includes(query) && !(s.address || '').toLowerCase().includes(query)) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => currentSort === 'distance' ? a.distance - b.distance : b.rating - a.rating);
+
+  const container = document.getElementById('services-list');
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:3rem;margin-bottom:12px">🔍</div><p>${t('no_services')}</p></div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(s => {
+    const dist = s.distance ? `<span>📏 ${s.distance.toFixed(1)} ${t('km')}</span>` : '';
+    const rating = s.rating ? `<span>⭐ ${s.rating}</span>` : '';
+    const bedStatus = s.beds ? getBedStatus(s.beds) : '';
+    const saved = isSaved(s.id) ? 'saved' : '';
+    const d = userLocation && s.lat ? `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}` : '#';
+
+    return `
+      <div class="service-card" onclick="openMapFor('${s.id}')">
+        <div class="card-icon ${s.type}">${getTypeIcon(s.type)}</div>
+        <div class="card-body">
+          <div class="card-name">${s.name}</div>
+          <div class="card-type">${s.subtype} ${bedStatus}</div>
+          <div class="card-meta">${dist}${rating}${s.address ? `<span>📍 ${s.address}</span>` : ''}</div>
+          <div class="card-actions">
+            ${s.phone ? `<button class="action-btn call-btn" onclick="event.stopPropagation();callNumber('${s.phone}')">📞 ${t('call')}</button>` : ''}
+            ${s.lat ? `<a href="${d}" target="_blank" class="action-btn dir-btn" onclick="event.stopPropagation()">🗺️ ${t('directions')}</a>` : ''}
+            <button class="action-btn share-btn" onclick="event.stopPropagation();shareService('${s.name}')">📤 ${t('share')}</button>
+            <button class="action-btn save-btn ${saved}" onclick="event.stopPropagation();toggleSave('${s.id}')">${saved ? '❤️' : '🤍'} ${t('save')}</button>
+          </div>
+        </div>
+        ${s.distance ? `<div class="distance-badge">${(s.distance * 1000).toFixed(0)}m</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  if (currentView === 'map' && map) {
+    const filteredIds = new Set(filtered.map(f => f.id));
+    markers.forEach(m => {
+      const inFilter = filteredIds.has(m.serviceId);
+      if (map.hasLayer(m) !== inFilter) {
+        if (inFilter) map.addLayer(m);
+        else map.removeLayer(m);
+      }
+    });
+    if (userLocation && filtered.length > 0) {
+      const bounds = L.latLngBounds([[userLocation.lat, userLocation.lng]]);
+      filtered.forEach(s => { if (s.lat && s.lng) bounds.extend([s.lat, s.lng]); });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }
+};
+
 // Init
 document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('offline', handleOffline);
   window.addEventListener('online', handleOnline);
   if (!navigator.onLine) handleOffline();
 
-  initGroq();
+  loadEnv();
   detectLocation();
   renderEmergencyNumbers();
   renderSaved();
+  loadProfile();
+  startAccidentDetection();
 
   document.getElementById('sos-btn').addEventListener('click', triggerSOS);
 
