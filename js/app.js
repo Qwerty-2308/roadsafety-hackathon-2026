@@ -96,7 +96,10 @@ function detectLocation() {
       renderSaved();
     },
     err => {
-      statusEl.innerHTML = `⚠️ ${t('location_error')} (${err.message})`;
+      const hint = location.protocol === 'http:' && location.hostname !== 'localhost'
+        ? ' (use https or localhost for GPS)'
+        : '';
+      statusEl.innerHTML = `⚠️ ${t('location_error')}${hint}`;
       statusEl.className = 'location-status error';
       userLocation = { lat: 13.0358, lng: 80.2464 };
       allServices = flattenServices();
@@ -738,6 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderEmergencyNumbers();
   renderSaved();
   loadProfile();
+  setTimeout(shareQR, 600); // auto-generate QR if profile exists
   startAccidentDetection();
   updateHazardStats();
   renderHazardList();
